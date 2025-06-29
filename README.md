@@ -61,3 +61,29 @@ This collection of scripts helps manage a large music library for iPods and othe
 - **Dependencies**: Ensure `ffmpeg` is installed and accessible via your system's PATH.  
 - **Customization**: Adjust environment variables as needed to tailor the scripts to your requirements.
 - **Maintenance**: This project is not actively maintained. It was originally built for personal use, but if you find it useful, feel free to explore it.
+
+## Docker Usage
+
+To run these scripts within a Docker container, follow these steps:
+
+1.  **Build the Docker image:**
+    ```bash
+    docker build -t music-scripts .
+    ```
+
+2.  **Run the Docker container:**
+    ```bash
+    docker run -it --rm -v "$(pwd)":/app --env-file .env music-scripts
+    ```
+    - `-it`: Runs the container in interactive mode with a terminal.
+    - `--rm`: Automatically removes the container when it exits.
+    - `-v "$(pwd)":/app`: Mounts the current directory into the `/app` directory in the container. This allows you to edit files locally and have the changes reflected in the container.
+    - `--env-file .env`: Loads environment variables from a `.env` file.
+
+3.  **Using the scripts:**
+    Once inside the container, you can run the scripts as you would locally:
+    ```bash
+    python3 loader.py
+    python3 matcher.py
+    # etc.
+    ```
