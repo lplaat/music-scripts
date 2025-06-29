@@ -8,13 +8,19 @@ from io import BytesIO
 import mutagen.mp4
 from alive_progress import alive_bar
 import os
+import argparse
 
 # Load .env File
 load_dotenv()
 
+# Setup argparse
+parser = argparse.ArgumentParser(description='Builds music library with metadata.')
+parser.add_argument('--mode', help='The build mode (ipod or navidrome)', default='ipod', choices=['ipod', 'navidrome'])
+args = parser.parse_args()
+
 def cleaner(path):
     # Cleans the path off downloaded stuff
-    path = path.replace('<', '_').replace('>', '_').replace(':', '_').replace('\"', '_').replace('/', '_').replace('.', '_')
+    path = path.replace('<', '_').replace('>', '_').replace(':', '_').replace('"', '_').replace('/', '_').replace('.', '_')
     return path.replace('\\', '_').replace('|', '_').replace('?', '_').replace('*', '_')
 
 def copiers(url):
@@ -50,10 +56,10 @@ def copiers(url):
     os.makedirs(parentPath, exist_ok=True)
     
     # Check if there is a existing audio file
-    # if 'existingAudioHash' in context.keys():
-    #     existingDatabase.copyFile(context['existingAudioHash'], filePath)
-    # else:
-    api.youtube.copyFile(context['ytId'], filePath)
+    if 'existingAudioHash' in context.keys():
+        existingDatabase.copyFile(context['existingAudioHash'], filePath)
+    else:
+        api.youtube.copyFile(context['ytId'], filePath)
     
     # Copy over album cover
     if not os.path.exists(parentPath + 'cover.jpg'):
@@ -68,22 +74,43 @@ def copiers(url):
         print(f'Failed to load: {filePath}')
         return False
 
-    if album['record_type'] == 'single' or album['nb_tracks'] <= 2:
-        audio['aART'] = "Singles"
-    else:
-        audio['aART'] = artist['name']
+    if args.mode == 'ipod':
+        if album.get('record_type') == 'single' or album.get('nb_tracks', 0) <= 2:
+            audio['aART'] = "Singles"
+        else:
+            audio['aART'] = artist['name']
+        audio['\xa9ART'] = artist['name']
+    elif args.mode == 'navidrome':
+        artists_list = []
+        if 'contributors' in track and track['contributors']:
+            for contributor in track['contributors']:
+                artists_list.append(contributor['name'])
+        
+        if artists_list:
+            audio['\xa9ART'] = '; '.join(artists_list)
+        else:
+            audio['\xa9ART'] = artist['name']
+
+        if 'artist' in album and 'name' in album['artist']:
+            audio['aART'] = album['artist']['name']
+        else:
+            audio['aART'] = artist['name']
 
     audio['\xa9nam'] = track['title']
-    audio['\xa9ART'] = artist['name']
     audio['\xa9alb'] = album['title']
-    audio['\xa9day'] = track['release_date'].split('-')[0]
-    audio['trkn'] = [ ( track['track_position'], album['nb_tracks']) ]
-    audio['cprt'] = album['label']
+    if 'release_date' in track and track['release_date']:
+        audio['\xa9day'] = track['release_date'].split('-')[0]
+    if 'track_position' in track and 'nb_tracks' in album:
+        audio['trkn'] = [ ( track['track_position'], album['nb_tracks']) ]
+    if 'label' in album:
+        audio['cprt'] = album['label']
 
     genres = []
-    for genre in album['genres']['data']: 
-        genres.append(genre['name'])
-    audio['\xa9gen'] = '; '.join(genres)
+    if 'genres' in album and 'data' in album['genres']:
+        for genre in album['genres']['data']: 
+            genres.append(genre['name'])
+    if genres:
+        audio['\xa9gen'] = '; '.join(genres)
 
     # Applying cover to file
     with open(parentPath + 'cover.jpg', "rb") as album_cover_file:

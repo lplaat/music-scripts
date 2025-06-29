@@ -116,7 +116,7 @@ class deezer():
                 break    
 
     def loadTracksFromArtist(id):
-        # Loading album pages and requests them        
+        # Loading album pages and requests them     
         next = f'/artist/{id}/albums?index='
         index = 0
         while True:
